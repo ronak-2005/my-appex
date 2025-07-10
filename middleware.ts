@@ -1,26 +1,38 @@
-// /middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import jwt from 'jsonwebtoken'
-
-const PUBLIC_ROUTES = ['/', '/login']
-const SECRET = 'your_secret_key_here' // Should match Flask
+import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  if (PUBLIC_ROUTES.includes(pathname)) return NextResponse.next()
+  const { pathname } = request.nextUrl;
+  const token = request.cookies.get('token')?.value;
 
-  const token = request.cookies.get('token')?.value
-  if (!token) return NextResponse.redirect(new URL('/login', request.url))
+  console.log('🔐 Checking auth for:', pathname, '| Token exists:', !!token);
 
-  try {
-    jwt.verify(token, SECRET)
-    return NextResponse.next()
-  } catch {
-    return NextResponse.redirect(new URL('/login', request.url))
+  // Define public routes
+  const isLoginPage = pathname.startsWith('/login');
+  const isRegisterPage = pathname.startsWith('/register');
+  const isIntroPage = pathname.startsWith('/intro');
+
+  // ⛔ If logged in, block access to /login or /register
+  if (token && (isLoginPage || isRegisterPage)) {
+    console.log('⚠️ Already logged in, redirecting away from auth pages');
+    return NextResponse.redirect(new URL('/start', request.url));
   }
+
+  // ✅ Allow public routes without auth
+  if (isLoginPage || isRegisterPage || isIntroPage) {
+    return NextResponse.next();
+  }
+
+  // 🔐 For protected routes, check token
+  if (!token) {
+    console.log('❌ No token found, redirecting to login');
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  console.log('✅ Token found, allowing access to:', pathname);
+  return NextResponse.next();
 }
 
+// ✅ Apply to all routes (excluding static files)
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-}
+};

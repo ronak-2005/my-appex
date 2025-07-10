@@ -1,10 +1,10 @@
-// app/layout.tsx
-import './globals.css'
-import { ReactNode } from 'react'
+// src/app/layout.tsx
+import '@/app/globals.css'
+import type { ReactNode } from 'react'
 
 export const metadata = {
-  title: 'My App',
-  description: 'A clean default layout',
+  title: 'AI Career Guide',
+  description: 'Get career recommendations based on your skills and interests.',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

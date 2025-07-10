@@ -1,3 +1,4 @@
+# auth/jwt_utils.py
 import jwt
 import datetime
 import os
@@ -7,16 +8,18 @@ load_dotenv()
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-def generate_tokens(user):
+def generate_tokens(username, user_id):  # ✅ Accept both username and user_id
     payload = {
-        'user': user,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
+        'username': username,  # ✅ Changed from 'user' to 'username'
+        'userId': str(user_id),  # ✅ Added userId
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24),
         'type': 'access'
     }
     access_token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
     refresh_payload = {
-        'user': user,
+        'username': username,
+        'userId': str(user_id),  
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
         'type': 'refresh'
     }

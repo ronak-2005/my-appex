@@ -1,27 +1,52 @@
-# backend/app.py
-
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+import jwt  
 from config import Config
 from database import users_collection
-from auth.auth_routes import auth_bp  # ✅ your auth blueprint
+from auth.auth_routes import auth_bp
 from chat.chat import chat_bp
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # ✅ Enable CORS with credentials (so cookies work in frontend)
-    CORS(app, supports_credentials=True)
+    # ✅ Correct CORS configuration
+    CORS(app, 
+         supports_credentials=True,
+         origins=["http://localhost:3000"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"]
+    )
 
-    # ✅ Register auth routes under /api
+    # ✅ Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)
 
-    # ✅ Default test route
+    # ✅ Health check
     @app.route('/')
     def home():
         return jsonify({"message": "API is working!"})
+
+    # ✅ Debug route (optional)
+    @app.route('/api/debug-headers', methods=['GET', 'POST', 'OPTIONS'])
+    def debug_headers():
+        return jsonify({
+            'method': request.method,
+            'headers': dict(request.headers),
+            'origin': request.headers.get('Origin'),
+            'cookies': dict(request.cookies),
+            'data': request.get_json() if request.is_json else None
+        })
+
+    # @app.before_request
+    # def handle_preflight():
+    #     if request.method == "OPTIONS":
+    #         response = jsonify()
+    #         response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
+    #         response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization")
+    #         response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
+    #         response.headers.add('Access-Control-Allow-Credentials', 'true')
+    #         return response
 
     # ✅ DB connection test route
     @app.route('/api/test-db')
@@ -34,6 +59,7 @@ def create_app():
 
     return app
 
+# ✅ App entry point
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -140,7 +140,7 @@ export default function InternalScroll() {
           >
             <div className="absolute top-8 left-0 transform z-20">
               <p className="text-gray-300 text-5xl pb-5 font-extrabold  align-text">
-              Explore your ideal career path with AI-powered guidance tailored to your interests and skills.
+              Your personalized career guidance assistant
               </p>
               <div className="flex items-center gap-4 pt-2">
                 <p className="text-gray-300 text-sm font-light">May 2025</p>
