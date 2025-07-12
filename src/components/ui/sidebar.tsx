@@ -105,7 +105,7 @@ const SidebarFooter: React.FC<{
   className = "",
 }) => (
   <div 
-    className={`p-4 border-t flex-shrink-0 ${className}`}
+    className={`p-3 border-t flex-shrink-0 ${className}`}
     style={{ borderColor: '#2a2a2a' }}
   >
     {children}
@@ -145,19 +145,12 @@ const SidebarMenuButton: React.FC<{
   const textColor = variant === 'purple' ? '#9333ea' : '#ffffff';
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (variant === 'purple') {
-      e.currentTarget.style.backgroundColor = '#7c3aed'; // purple-700
-    } else {
-      e.currentTarget.style.backgroundColor = '#2a2a2a';
-    }
+      e.currentTarget.style.backgroundColor = '#2a2a2a'; 
+      e.currentTarget.style.textDecorationColor = '#2a2a2a' 
   };
 
   const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (variant === 'purple') {
       e.currentTarget.style.backgroundColor = 'transparent'; // purple-600
-    } else {
-      e.currentTarget.style.backgroundColor = 'transparent';
-    }
   };
 
   return (
@@ -182,11 +175,17 @@ const SidebarTrigger: React.FC<{
   className = '',
   variant = 'default',
 }) => {
-  const { isOpen, setIsOpen } = useSidebar();
+  const { isOpen, toggleSidebar } = useSidebar(); // use toggleSidebar directly
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSidebar(); // just toggle it cleanly
+  };
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (variant === 'logo-hover') {
-      e.currentTarget.style.backgroundColor = '#374151'; // gray-700
+      e.currentTarget.style.backgroundColor = '#374151';
       e.currentTarget.style.opacity = '1';
     } else {
       e.currentTarget.style.backgroundColor = '#2a2a2a';
@@ -202,7 +201,7 @@ const SidebarTrigger: React.FC<{
 
   return (
     <button
-      onClick={() => setIsOpen(!isOpen)}
+      onClick={handleClick}
       className={`p-2 rounded-md transition-all duration-200 text-white ${className}`}
       style={{
         opacity: variant === 'logo-hover' ? 0 : 1

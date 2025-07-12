@@ -3,11 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-
-interface Chat {
-  id: string;
-  title: string;
-}
+import { Chat } from '@/types/chat';
 
 export default function RecentChats() {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -31,8 +27,8 @@ export default function RecentChats() {
       {chats.length === 0 && <p className="text-sm text-gray-500">No recent chats</p>}
       {chats.map((chat) => (
         <Link
-          key={chat.id}
-          href={`/start/chat/${chat.id}`}
+          key={chat._id}
+          href={`/start/chat/${chat._id}`}
           className="block text-sm text-white hover:underline"
         >
           {chat.title}
