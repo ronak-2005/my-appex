@@ -1,271 +1,374 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Send } from "lucide-react";
+
+interface ApiResponse {
+  success?: boolean;
+  chatId?: string;
+  chat_id?: string;
+  _id?: string;
+  error?: string;
+  message?: string;
+}
 
 export default function NewChatForm() {
   const router = useRouter();
+  const [userInput, setUserInput] = useState("");
+  const [username, setUsername] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [skills, setSkills] = useState('');
-  const [goals, setGoals] = useState('');
-  const [domain, setDomain] = useState('');
-  const [experience, setExperience] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-const getCurrentUserId = async () => {
-  try {
-    console.log('🔍 Calling verify-token endpoint...');
-    const apiUrl = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000';
-    const response = await fetch('http://localhost:5000/api/verify-token', {
-      method: 'GET',
-      credentials: 'include'
-    });
-
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response ok:', response.ok);
-
-    if (response.ok) {
-      const data = await response.json();
-      console.log('📦 Full response data:', data);
-      console.log('👤 UserId from response:', data.userId);
-      console.log('👤 Username from response:', data.username);
-      
-      return data.userId;
-    } else if (response.status === 401) {
-      console.log('🔒 Token expired, attempting refresh...');
-      
-      // Try to refresh the token
-      const refreshResponse = await fetch('http://localhost:5000/api/refresh-token', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (refreshResponse.ok) {
-        console.log('✅ Token refreshed successfully');
-      
-        const retryResponse = await fetch(`${apiUrl}/api/verify-token`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        if (retryResponse.ok) {
-          const retryData = await retryResponse.json();
-          return retryData.userId;
-        }
-      }
-      
-      // If refresh fails, redirect to login
-      alert('Your session has expired. Please log in again.');
-      router.push('/login');
-      return null;
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-    return null;
-  } catch (error) {
-    console.error('❌ Error in getCurrentUserId:', error);
-    return null;
-  }
-};
+  }, [userInput]);
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
+        const res = await fetch(`${apiUrl}/api/verify-token`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log("Token verification response:", data);
+          setUsername(data.username);
+        } else if (res.status === 401) {
+          router.push("/login");
+        }
+      } catch (err) {
+        console.error("Error verifying token:", err);
+        router.push("/login");
+      }
+    };
+
+    fetchUsername();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userInput.trim()) return;
+
     setIsSubmitting(true);
+    setError(null);
 
     try {
-      // Generate unique user ID for this session
-      const uniqueUserId = await getCurrentUserId();
-
-      if (!uniqueUserId) {
-        alert('Unable to verify authentication. Please log in again.');
-        router.push('/login');
-        return;
-      }
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
+    
+      // Create a more appropriate title - limit to 30 characters for better display
+      const title = userInput.trim()
       
-      const apiUrl = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000';
-      const chatData = {
-        title: goals || 'New Career Chat',
-        name,
-        email,
-        skills: skills.split(',').map((s) => s.trim()).filter(s => s.length > 0),
-        goals,  // ✅ This is required by your backend
-        domain,
-        experience
-        // ❌ Remove: userId, archived, createdAt, messages
-        // Backend gets userId from JWT token and creates these fields automatically
+      const requestBody = {
+        title: title,
+        userInput: userInput.trim(),
+        goals: userInput.trim(), // Keep for backward compatibility if needed
       };
-      console.log('Creating chat with data:', chatData);
-      console.log('API URL:', apiUrl);
 
-      const response = await fetch(`${apiUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' ,
-                    'Accept':'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(chatData),
+      console.log("Sending request:", requestBody);
+
+      const res = await fetch(`${apiUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(requestBody),
       });
-      console.log('Chat creation response status:', response.status);
-      console.log('Chat creation response ok:', response.ok);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Chat creation error:', errorData);
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+
+      const data: ApiResponse = await res.json();
+      console.log("Chat creation response:", data);
+
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP error! status: ${res.status}`);
       }
-      const data = await response.json();
-      console.log('Chat created successfully:', data);
-      
+
+      // Check for chat ID in response
       const chatId = data.chatId || data.chat_id || data._id;
+      
       if (chatId) {
+        console.log("Redirecting to chat:", chatId);
         router.push(`/start/chat/${chatId}`);
       } else {
-        throw new Error('No chat ID returned from server');
+        console.error("No chat ID in response:", data);
+        throw new Error("No chat ID returned from server");
       }
-    } catch (error) {
-      console.error('Network error:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Network error occurred. Please try again.'}`);
+
+    } catch (err) {
+      console.error("Submit failed:", err);
+      setError(err instanceof Error ? err.message : "Failed to create chat");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">
-          Start New Career Chat
-        </h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Full Name
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Enter your full name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+    <div
+      className="h-screen w-full flex items-start justify-center px-4 overflow-hidden"
+      style={{ paddingTop: "20%" }}
+    >
+      <div className="text-white w-full max-w-none overflow-hidden" style={{ width: "55%" }}>
+        {username && (
+          <h2 
+            className="font-bold mb-6 truncate" 
+            style={{ fontSize: "300%" }}
+            title={`Hi, ${username}`}
+          >
+            Hi, {username}
+          </h2>
+        )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              required
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        {error && (
+          <div className="mb-4 p-3 bg-red-600/20 border border-red-600/50 rounded-lg text-red-200 overflow-hidden">
+            <p className="break-words">{error}</p>
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Skills
-            </label>
-            <input
-              type="text"
-              placeholder="e.g., JavaScript, React, Node.js"
-              value={skills}
-              onChange={(e) => setSkills(e.target.value)}
-              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">Separate multiple skills with commas</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Career Goals
-            </label>
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-3xl mx-auto rounded-2xl px-4 py-2 overflow-hidden"
+          style={{
+            backgroundColor: "#2f2f2f",
+            borderColor: "#2a2a2a",
+          }}
+        >
+          <div className="w-full overflow-hidden">
             <textarea
-              required
-              placeholder="What are your career goals?"
-              value={goals}
-              onChange={(e) => setGoals(e.target.value)}
-              rows={3}
-              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              ref={textareaRef}
+              rows={1}
+              placeholder="Tell me about yourself — your skills, interests, and what kind of career you're aiming for."
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="w-full bg-transparent text-white placeholder-gray-400 text-base resize-none focus:outline-none px-2 py-2 leading-snug overflow-hidden break-words"
+              style={{ 
+                minHeight: "40px",
+                wordWrap: "break-word",
+                whiteSpace: "pre-wrap"
+              }}
+              disabled={isSubmitting}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Preferred Domain
-            </label>
-            <select
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="flex justify-between items-center mt-2">
+            <button
+              type="button"
+              onClick={() => console.log("Plus clicked")}
+              className="text-white p-2 hover:bg-gray-700 rounded-md transition-colors flex-shrink-0"
+              disabled={isSubmitting}
             >
-              <option value="">Select a domain</option>
-              <option value="frontend">Frontend Development</option>
-              <option value="backend">Backend Development</option>
-              <option value="fullstack">Full Stack Development</option>
-              <option value="data">Data Science</option>
-              <option value="ai">Artificial Intelligence</option>
-              <option value="mobile">Mobile Development</option>
-              <option value="devops">DevOps</option>
-              <option value="design">UI/UX Design</option>
-            </select>
-          </div>
+              <Plus size={20} />
+            </button>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Experience Level
-            </label>
-            <select
-              value={experience}
-              onChange={(e) => setExperience(e.target.value)}
-              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <button
+              type="submit"
+              disabled={isSubmitting || userInput.trim() === ""}
+              className="text-white p-2 hover:bg-gray-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent flex-shrink-0"
             >
-              <option value="">Select experience level</option>
-              <option value="beginner">Beginner (0-1 years)</option>
-              <option value="intermediate">Intermediate (1-3 years)</option>
-              <option value="advanced">Advanced (3+ years)</option>
-            </select>
+              {isSubmitting ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <Send size={20} />
+              )}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center"
-          >
-            {isSubmitting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Creating Chat...
-              </>
-            ) : (
-              'Start Career Chat'
-            )}
-          </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => router.back()}
-            className="text-gray-400 hover:text-white text-sm transition duration-200"
-          >
-            ← Back to Home
-          </button>
-        </div>
       </div>
     </div>
   );
 }
+// "use client";
 
+// import { useState, useRef, useEffect } from "react";
+// import { useRouter } from "next/navigation";
+// import { Plus, Send } from "lucide-react";
+
+// interface ApiResponse {
+//   success?: boolean;
+//   chatId?: string;
+//   chat_id?: string;
+//   _id?: string;
+//   error?: string;
+//   message?: string;
+// }
+
+// export default function NewChatForm() {
+//   const router = useRouter();
+//   const [userInput, setUserInput] = useState("");
+//   const [username, setUsername] = useState<string | null>(null);
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [error, setError] = useState<string | null>(null);
+//   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+//   useEffect(() => {
+//     if (textareaRef.current) {
+//       textareaRef.current.style.height = "auto";
+//       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+//     }
+//   }, [userInput]);
+
+
+//   useEffect(() => {
+//     const fetchUsername = async () => {
+//       try {
+//         const apiUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
+//         const res = await fetch(`${apiUrl}/api/verify-token`, {
+//           method: "GET",
+//           credentials: "include",
+//         });
+
+//         if (res.ok) {
+//           const data = await res.json();
+//           console.log("Token verification response:", data);
+//           setUsername(data.username);
+//         } else if (res.status === 401) {
+//           router.push("/login");
+//         }
+//       } catch (err) {
+//         console.error("Error verifying token:", err);
+//         router.push("/login");
+//       }
+//     };
+
+//     fetchUsername();
+//   }, [router]);
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     if (!userInput.trim()) return;
+
+//     setIsSubmitting(true);
+//     setError(null);
+
+//     try {
+//       const apiUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
+    
+//       const title = userInput.length > 50 ? userInput.substring(0, 50) + "..." : userInput;
+      
+//       const requestBody = {
+//         title: title,
+//         userInput: userInput.trim(),
+//         goals: userInput.trim(), // Keep for backward compatibility if needed
+//       };
+
+//       console.log("Sending request:", requestBody);
+
+//       const res = await fetch(`${apiUrl}/api/chat`, {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         credentials: "include",
+//         body: JSON.stringify(requestBody),
+//       });
+
+//       const data: ApiResponse = await res.json();
+//       console.log("Chat creation response:", data);
+
+//       if (!res.ok) {
+//         throw new Error(data.error || `HTTP error! status: ${res.status}`);
+//       }
+
+//       // Check for chat ID in response
+//       const chatId = data.chatId || data.chat_id || data._id;
+      
+//       if (chatId) {
+//         console.log("Redirecting to chat:", chatId);
+//         router.push(`/start/chat/${chatId}`);
+//       } else {
+//         console.error("No chat ID in response:", data);
+//         throw new Error("No chat ID returned from server");
+//       }
+
+//     } catch (err) {
+//       console.error("Submit failed:", err);
+//       setError(err instanceof Error ? err.message : "Failed to create chat");
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   };
+
+//   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+//     if (e.key === "Enter" && !e.shiftKey) {
+//       e.preventDefault();
+//       handleSubmit(e as any);
+//     }
+//   };
+
+//   return (
+//     <div
+//       className="h-screen w-full flex items-start justify-center px-4 overflow-hidden"
+//       style={{ paddingTop: "20%" }}
+//     >
+//       <div className="text-white w-full max-w-none overflow-hidden" style={{ width: "55%" }}>
+//         {username && (
+//           <h2 className="font-bold mb-6" style={{ fontSize: "300%" }}>
+//             Hi, {username}
+//           </h2>
+//         )}
+
+//         {error && (
+//           <div className="mb-4 p-3 bg-red-600/20 border border-red-600/50 rounded-lg text-red-200 overflow-hidden">
+//             {error}
+//           </div>
+//         )}
+
+//         <form
+//           onSubmit={handleSubmit}
+//           className="w-full max-w-3xl mx-auto rounded-2xl px-4 py-2 overflow-hidden"
+//           style={{
+//             backgroundColor: "#2f2f2f",
+//             borderColor: "#2a2a2a",
+//           }}
+//         >
+//           <div className="w-full overflow-hidden">
+//             <textarea
+//               ref={textareaRef}
+//               rows={1}
+//               placeholder="Tell me about yourself — your skills, interests, and what kind of career you're aiming for."
+//               value={userInput}
+//               onChange={(e) => setUserInput(e.target.value)}
+//               onKeyPress={handleKeyPress}
+//               className="w-full bg-transparent text-white placeholder-gray-400 text-base resize-none focus:outline-none px-2 py-2 leading-snug overflow-hidden break-words"
+//               style={{ minHeight: "40px" }}
+//               disabled={isSubmitting}
+//             />
+//           </div>
+
+//           <div className="flex justify-between items-center mt-2">
+//             <button
+//               type="button"
+//               onClick={() => console.log("Plus clicked")}
+//               className="text-white p-2 hover:bg-gray-700 rounded-md transition-colors"
+//               disabled={isSubmitting}
+//             >
+//               <Plus size={20} />
+//             </button>
+
+//             <button
+//               type="submit"
+//               disabled={isSubmitting || userInput.trim() === ""}
+//               className="text-white p-2 hover:bg-gray-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+//             >
+//               {isSubmitting ? (
+//                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+//               ) : (
+//                 <Send size={20} />
+//               )}
+//             </button>
+//           </div>
+//         </form>
+//       </div>
+//     </div>
+//   );
+// }

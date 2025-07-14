@@ -34,9 +34,6 @@ const ArchivedChats: React.FC<ArchivedChatsProps> = ({ archived = [], onChatSele
             >
               <div className="flex flex-col">
                 <span className="font-medium">{chat.title}</span>
-                <span className="text-sm text-gray-400">
-                  {chat.goals && `Goals: ${chat.goals}`}
-                </span>
               </div>
             </li>
           ))}

@@ -29,6 +29,7 @@ export default function RegisterPage() {
       })
 
       const data = await res.json()
+      console.log("Chat creation response:", data);
       if (data.success) {
         setSuccess(true)
         setTimeout(() => router.push('/login'), 1500)

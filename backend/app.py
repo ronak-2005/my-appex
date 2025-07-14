@@ -38,17 +38,6 @@ def create_app():
             'data': request.get_json() if request.is_json else None
         })
 
-    # @app.before_request
-    # def handle_preflight():
-    #     if request.method == "OPTIONS":
-    #         response = jsonify()
-    #         response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
-    #         response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization")
-    #         response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
-    #         response.headers.add('Access-Control-Allow-Credentials', 'true')
-    #         return response
-
-    # ✅ DB connection test route
     @app.route('/api/test-db')
     def test_db():
         try:

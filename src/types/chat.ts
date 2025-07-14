@@ -3,12 +3,6 @@ export interface Chat {
   userId?: string;
   user_id?: string;
   title: string;
-  name?: string;
-  email?: string;
-  skills?: string[];
-  goals?: string;
-  domain?: string;
-  experience?: string;
   archived?: boolean;
   createdAt?: string;
   created_at?: string;
